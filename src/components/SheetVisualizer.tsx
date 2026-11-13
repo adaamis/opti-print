@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Crosshair,
   Eye,
   Info,
   Layers,
+  PinOff,
   RotateCw,
   Scissors,
   SquareDashed,
@@ -30,6 +31,11 @@ export interface SheetVisualizerProps {
   initialShowGuillotineCuts?: boolean;
   showGuillotineCuts?: boolean;
   onToggleGuillotineCuts?: (show: boolean) => void;
+  guillotineRequired?: boolean;
+  onToggleGuillotineRequired?: (required: boolean) => void;
+  onItemPinChange?: (item: PlacedItem, isPinned: boolean) => void;
+  onItemMove?: (item: PlacedItem, newX: number, newY: number) => void;
+  onResetPins?: () => void;
 }
 
 export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
@@ -48,6 +54,11 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
   initialShowGuillotineCuts = false,
   showGuillotineCuts: controlledShowGuillotineCuts,
   onToggleGuillotineCuts,
+  guillotineRequired,
+  onToggleGuillotineRequired,
+  onItemPinChange,
+  onItemMove,
+  onResetPins,
 }) => {
   const [zoomPercent, setZoomPercent] = useState<number>(100);
   const [showCutGuides, setShowCutGuides] = useState<boolean>(true);
@@ -56,6 +67,12 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
   const [internalShowBleed, setInternalShowBleed] = useState<boolean>(initialShowBleed);
   const [internalShowGuillotineCuts, setInternalShowGuillotineCuts] = useState<boolean>(initialShowGuillotineCuts);
   const [hoveredItem, setHoveredItem] = useState<PlacedItem | null>(null);
+
+  // Dragging state
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [draggingItem, setDraggingItem] = useState<PlacedItem | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragCurrentPos, setDragCurrentPos] = useState<{ x: number; y: number } | null>(null);
 
   const showCropMarks = controlledShowCropMarks ?? internalShowCropMarks;
   const showBleed = controlledShowBleed ?? internalShowBleed;
@@ -86,12 +103,92 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
     return activeLayout ? analyzeGuillotineCuts(activeLayout) : null;
   }, [guillotineAnalysis, activeLayout]);
 
+  const pinnedItemsCount = useMemo(() => {
+    if (!activeLayout) return 0;
+    return activeLayout.placedItems.filter((it) => it.isPinned).length;
+  }, [activeLayout]);
+
   const handleZoom = (delta: number) => {
     setZoomPercent((prev) => Math.min(250, Math.max(40, prev + delta)));
   };
 
   const handleResetZoom = () => {
     setZoomPercent(100);
+  };
+
+  // Drag handlers
+  const handleItemPointerDown = (item: PlacedItem, e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (!svgRef.current) return;
+    try {
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
+
+    const ctm = svgRef.current.getScreenCTM();
+    if (!ctm) return;
+    const inv = ctm.inverse();
+    const svgX = inv.a * e.clientX + inv.c * e.clientY + inv.e;
+    const svgY = inv.b * e.clientX + inv.d * e.clientY + inv.f;
+
+    setDraggingItem(item);
+    setDragOffset({
+      x: svgX - item.x,
+      y: svgY - item.y,
+    });
+    setDragCurrentPos({ x: item.x, y: item.y });
+  };
+
+  const handleSvgPointerMove = (e: React.PointerEvent) => {
+    if (!draggingItem || !svgRef.current || !activeLayout) return;
+    const ctm = svgRef.current.getScreenCTM();
+    if (!ctm) return;
+    const inv = ctm.inverse();
+    const svgX = inv.a * e.clientX + inv.c * e.clientY + inv.e;
+    const svgY = inv.b * e.clientX + inv.d * e.clientY + inv.f;
+
+    let targetX = svgX - dragOffset.x;
+    let targetY = svgY - dragOffset.y;
+
+    // Clamp within sheet margins
+    const margin = activeLayout.marginMm;
+    const minX = margin;
+    const minY = margin;
+    const maxX = Math.max(minX, activeLayout.widthMm - margin - draggingItem.width);
+    const maxY = Math.max(minY, activeLayout.heightMm - margin - draggingItem.height);
+
+    targetX = Math.max(minX, Math.min(maxX, targetX));
+    targetY = Math.max(minY, Math.min(maxY, targetY));
+
+    setDragCurrentPos({ x: targetX, y: targetY });
+  };
+
+  const handleSvgPointerUp = (e: React.PointerEvent) => {
+    if (!draggingItem) return;
+    try {
+      (e.target as Element).releasePointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
+
+    if (dragCurrentPos) {
+      // Only trigger if actually moved or pinning requested
+      const dist = Math.hypot(dragCurrentPos.x - draggingItem.x, dragCurrentPos.y - draggingItem.y);
+      if (dist > 1) {
+        onItemMove?.(draggingItem, dragCurrentPos.x, dragCurrentPos.y);
+      } else if (!draggingItem.isPinned) {
+        onItemPinChange?.(draggingItem, true);
+      }
+    }
+
+    setDraggingItem(null);
+    setDragCurrentPos(null);
+  };
+
+  const handleSvgPointerCancel = () => {
+    setDraggingItem(null);
+    setDragCurrentPos(null);
   };
 
   if (!activeLayout) {
@@ -164,6 +261,20 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             </div>
           )}
 
+          {/* Reset Pins Button (if any items are pinned) */}
+          {pinnedItemsCount > 0 && onResetPins && (
+            <button
+              type="button"
+              data-testid="unpin-all-btn"
+              onClick={onResetPins}
+              title="Desafixar todos os elementos e retornar ao arranjo automático"
+              className="inline-flex items-center gap-1 rounded-xl bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60"
+            >
+              <PinOff className="h-3 w-3" />
+              Desafixar Todos ({pinnedItemsCount})
+            </button>
+          )}
+
           {/* Guillotine Viability Badge & Modal Trigger */}
           {resolvedGuillotineAnalysis && (
             <div
@@ -205,6 +316,33 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
 
         {/* Display Toggles & Zoom */}
         <div className="flex items-center gap-1.5">
+          {/* Require Guillotine Cut Toggle */}
+          {onToggleGuillotineRequired && (
+            <label
+              data-testid="toggle-guillotine-required"
+              title="Exigir corte de guilhotina linear de ponta a ponta (garante cortes retos de ponta a ponta sem fatiar peças adjacentes)"
+              className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium border cursor-pointer select-none transition-colors ${
+                (guillotineRequired ?? true)
+                  ? 'bg-amber-50/80 text-amber-900 border-amber-300 dark:border-amber-700/70 dark:bg-amber-950/50 dark:text-amber-200'
+                  : 'bg-white text-stone-500 border-stone-200/70 hover:bg-stone-50 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-400 dark:hover:bg-[#18243C]'
+              }`}
+            >
+              <input
+                type="checkbox"
+                data-testid="guillotine-required-checkbox"
+                checked={guillotineRequired ?? true}
+                onChange={(e) => onToggleGuillotineRequired(e.target.checked)}
+                className="sr-only"
+              />
+              <span
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  (guillotineRequired ?? true) ? 'bg-amber-500' : 'bg-stone-300 dark:bg-slate-600'
+                }`}
+              />
+              <span className="whitespace-nowrap">Exigir Guilhotina</span>
+            </label>
+          )}
+
           <button
             type="button"
             onClick={handleToggleGuillotineCuts}
@@ -323,9 +461,13 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }}
           >
             <svg
+              ref={svgRef}
               viewBox={`0 0 ${w} ${h}`}
-              className="h-full w-full select-none"
+              className={`h-full w-full select-none ${draggingItem ? 'cursor-grabbing' : 'cursor-default'}`}
               xmlns="http://www.w3.org/2000/svg"
+              onPointerMove={handleSvgPointerMove}
+              onPointerUp={handleSvgPointerUp}
+              onPointerCancel={handleSvgPointerCancel}
             >
               {/* Outer paper background */}
               <rect
@@ -410,7 +552,11 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
               {/* Placed Items */}
               <g id="visual-items">
                 {activeLayout.placedItems.map((item) => {
+                  const isBeingDragged = draggingItem?.index === item.index && draggingItem.sheetNumber === item.sheetNumber;
+                  const currentX = isBeingDragged && dragCurrentPos ? dragCurrentPos.x : item.x;
+                  const currentY = isBeingDragged && dragCurrentPos ? dragCurrentPos.y : item.y;
                   const isHovered = hoveredItem?.index === item.index;
+                  const isPinned = Boolean(item.isPinned);
                   const fontSize = Math.max(
                     2.4,
                     Math.min(5.2, Math.min(item.width, item.height) * 0.14),
@@ -419,43 +565,77 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                   return (
                     <g
                       key={`item-${item.index}-${item.x}-${item.y}`}
+                      data-testid={`placed-item-${item.index}`}
+                      onPointerDown={(e) => handleItemPointerDown(item, e)}
                       onMouseEnter={() => setHoveredItem(item)}
                       onMouseLeave={() => setHoveredItem(null)}
-                      className="cursor-pointer transition-opacity"
+                      className={`transition-opacity ${isBeingDragged ? 'cursor-grabbing opacity-90' : 'cursor-grab'}`}
                     >
                       {/* Item Fill */}
                       <rect
-                        x={item.x}
-                        y={item.y}
+                        x={currentX}
+                        y={currentY}
                         width={item.width}
                         height={item.height}
                         fill={item.color}
-                        fillOpacity={isHovered ? 0.45 : 0.28}
-                        stroke={isHovered ? '#38bdf8' : item.color}
-                        strokeWidth={isHovered ? 0.6 : 0.35}
+                        fillOpacity={isBeingDragged ? 0.6 : isHovered ? 0.45 : 0.28}
+                        stroke={isBeingDragged ? '#f59e0b' : isHovered ? '#38bdf8' : isPinned ? '#d97706' : item.color}
+                        strokeWidth={isBeingDragged ? 0.8 : isHovered ? 0.6 : isPinned ? 0.5 : 0.35}
                         rx="0.4"
                       />
 
                       {/* Precise Cut Outline */}
                       {showCutGuides && (
                         <rect
-                          x={item.x}
-                          y={item.y}
+                          x={currentX}
+                          y={currentY}
                           width={item.width}
                           height={item.height}
                           fill="none"
-                          stroke="#1c1917"
-                          className="dark:stroke-slate-300"
+                          stroke={isPinned ? '#d97706' : '#1c1917'}
+                          className={isPinned ? 'stroke-amber-600 dark:stroke-amber-400' : 'dark:stroke-slate-300'}
                           strokeWidth="0.15"
                         />
+                      )}
+
+                      {/* Pinned Badge / Icon */}
+                      {isPinned && (
+                        <g
+                          data-testid={`item-pinned-badge-${item.index}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onItemPinChange?.(item, false);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <rect
+                            x={currentX + 1}
+                            y={currentY + 1}
+                            width="5.5"
+                            height="4"
+                            rx="0.6"
+                            fill="#d97706"
+                          />
+                          <text
+                            x={currentX + 3.75}
+                            y={currentY + 3.6}
+                            fontSize="2.4"
+                            fontFamily="sans-serif"
+                            fontWeight="bold"
+                            fill="#ffffff"
+                            textAnchor="middle"
+                          >
+                            📌
+                          </text>
+                        </g>
                       )}
 
                       {/* 90° Badge */}
                       {item.rotated && (
                         <g>
                           <rect
-                            x={item.x + item.width - 5.5}
-                            y={item.y + 0.8}
+                            x={currentX + item.width - 5.5}
+                            y={currentY + 0.8}
                             width="4.8"
                             height="3.4"
                             rx="0.6"
@@ -463,8 +643,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                             className="dark:fill-slate-700"
                           />
                           <text
-                            x={item.x + item.width - 3.1}
-                            y={item.y + 3.1}
+                            x={currentX + item.width - 3.1}
+                            y={currentY + 3.1}
                             fontSize="2"
                             fontFamily="sans-serif"
                             fontWeight="bold"
@@ -483,8 +663,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                           {item.width > 22 && item.height > 16 ? (
                             <>
                               <text
-                                x={item.x + item.width / 2}
-                                y={item.y + item.height / 2 - fontSize * 0.4}
+                                x={currentX + item.width / 2}
+                                y={currentY + item.height / 2 - fontSize * 0.4}
                                 fontSize={fontSize}
                                 fontFamily="sans-serif"
                                 fontWeight="600"
@@ -496,8 +676,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                                 #{item.index} {item.name}
                               </text>
                               <text
-                                x={item.x + item.width / 2}
-                                y={item.y + item.height / 2 + fontSize * 0.8}
+                                x={currentX + item.width / 2}
+                                y={currentY + item.height / 2 + fontSize * 0.8}
                                 fontSize={fontSize * 0.75}
                                 fontFamily="sans-serif"
                                 fill="#78716c"
@@ -510,8 +690,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                             </>
                           ) : (
                             <text
-                              x={item.x + item.width / 2}
-                              y={item.y + item.height / 2}
+                              x={currentX + item.width / 2}
+                              y={currentY + item.height / 2}
                               fontSize={fontSize}
                               fontFamily="sans-serif"
                               fontWeight="600"

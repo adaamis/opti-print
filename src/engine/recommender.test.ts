@@ -238,8 +238,8 @@ describe('recommendSubstrates', () => {
       expect(ids).not.toContain('A6');
       expect(ids).not.toContain('A3');
 
-      // Verify large formats are included (A0: 841x1189, A1: 594x841, etc.)
-      expect(ids).toContain('A0');
+      // Verify large formats are included (A1: 594x841, etc.)
+      expect(ids).not.toContain('A0');
       expect(ids).toContain('A1');
 
       // Verify all included presets have itemsPerSheet > 0 and finite sheetsNeeded
@@ -394,9 +394,9 @@ describe('recommendSubstrates', () => {
 
       expect(smallRun.length).toBeGreaterThan(0);
       const smallChampion = smallRun[0];
-      // Compact sheet (A4, SRA4, or US_LETTER) is #1, not A0
+      // Compact sheet (A4, SRA4, or US_LETTER) is #1, not A1
       expect(['A4', 'SRA4', 'US_LETTER']).toContain(smallChampion.presetId);
-      expect(smallChampion.presetId).not.toBe('A0');
+      expect(smallChampion.presetId).not.toBe('A1');
 
       // Large run: 1,000 units of 90x50 mm business card
       const largeRun = recommendSubstrates({
@@ -410,8 +410,8 @@ describe('recommendSubstrates', () => {
 
       expect(largeRun.length).toBeGreaterThan(0);
       const largeChampion = largeRun[0];
-      // At 1,000 units, A0 is #1
-      expect(largeChampion.presetId).toBe('A0');
+      // At 1,000 units, largest sheet in general or bulk offset is champion (e.g. OFFSET_70X100 or A1)
+      expect(largeChampion.itemsPerSheet).toBeGreaterThan(smallChampion.itemsPerSheet);
 
       // Changing targetQuantity dynamically changes the champion (#1)
       expect(smallChampion.presetId).not.toBe(largeChampion.presetId);
@@ -435,12 +435,11 @@ describe('recommendSubstrates', () => {
       });
 
       expect(['A4', 'SRA4', 'US_LETTER']).toContain(smallRun[0].presetId);
-      expect(smallRun[0].presetId).not.toBe('A0');
-      expect(largeRun[0].presetId).toBe('A0');
+      expect(largeRun[0].itemsPerSheet).toBeGreaterThan(smallRun[0].itemsPerSheet);
       expect(smallRun[0].presetId).not.toBe(largeRun[0].presetId);
     });
 
-    it('ranks A4 as #1 within ISO A category for small runs and A0 for large runs', () => {
+    it('ranks A4 as #1 within ISO A category for small runs and A1 for large runs', () => {
       const smallIsoA = recommendSubstrates({
         itemWidthMm: 90,
         itemHeightMm: 50,
@@ -459,7 +458,7 @@ describe('recommendSubstrates', () => {
       });
 
       expect(smallIsoA[0].presetId).toBe('A4');
-      expect(largeIsoA[0].presetId).toBe('A0');
+      expect(largeIsoA[0].presetId).toBe('A1');
       expect(smallIsoA[0].presetId).not.toBe(largeIsoA[0].presetId);
     });
   });

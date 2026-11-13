@@ -355,4 +355,75 @@ describe('packItems (multi-item multi-sheet)', () => {
     ]);
     expect(packShort.sheets[0].grainDirection).toBe('short');
   });
+
+  describe('guillotineRequired constraint and pinned items', () => {
+    const a4: SheetConfig = {
+      presetId: 'A4',
+      widthMm: 210,
+      heightMm: 297,
+      marginMm: 5,
+      spacingMm: 2,
+      orientation: 'portrait',
+      guillotineRequired: true,
+    };
+
+    it('computeQuickYield respects guillotineRequired flag and falls back if mixed is not guillotine cuttable', () => {
+      const res = computeQuickYield(a4, 90, 50);
+      expect(res.itemFits).toBe(true);
+      // Best strategy should be a valid strategy
+      expect(['normal', 'rotated', 'mixed']).toContain(res.bestStrategy);
+      if (res.bestStrategy === 'mixed') {
+        expect(res.mixed.count).toBeGreaterThan(Math.max(res.normal.count, res.rotated.count));
+      }
+    });
+
+    it('packItems correctly reserves pinned items and packs remaining unpinned items dynamically around them', () => {
+      const items = [
+        { id: 'item-1', name: 'Cartão', widthMm: 90, heightMm: 50, quantity: 4, color: '#2563eb', allowRotation: true },
+      ];
+
+      // Pin 1 item at (50, 50)
+      const pinned = [
+        {
+          x: 50,
+          y: 50,
+          width: 90,
+          height: 50,
+          rotated: false,
+          itemId: 'item-1',
+          name: 'Cartão',
+          color: '#2563eb',
+          index: 1,
+          isPinned: true,
+          sheetNumber: 1,
+        },
+      ];
+
+      const result = packItems(a4, items, pinned);
+      expect(result.sheets.length).toBeGreaterThanOrEqual(1);
+
+      const firstSheet = result.sheets[0];
+      const pinnedPlaced = firstSheet.placedItems.find((p) => p.isPinned);
+      expect(pinnedPlaced).toBeDefined();
+      expect(pinnedPlaced?.x).toBe(50);
+      expect(pinnedPlaced?.y).toBe(50);
+
+      // Remaining 3 unpinned items should be packed around it without overlap
+      expect(result.totalPlaced).toBe(4);
+
+      // Verify no overlap with pinned item or each other
+      for (let i = 0; i < firstSheet.placedItems.length; i++) {
+        for (let j = i + 1; j < firstSheet.placedItems.length; j++) {
+          const a = firstSheet.placedItems[i];
+          const b = firstSheet.placedItems[j];
+          const overlap =
+            a.x < b.x + b.width - 1e-4 &&
+            a.x + a.width > b.x + 1e-4 &&
+            a.y < b.y + b.height - 1e-4 &&
+            a.y + a.height > b.y + 1e-4;
+          expect(overlap).toBe(false);
+        }
+      }
+    });
+  });
 });

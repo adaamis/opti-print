@@ -1,7 +1,6 @@
 export type Unit = 'mm' | 'cm';
 
 export type BuiltinSheetPresetId =
-  | 'A0'
   | 'A1'
   | 'A2'
   | 'A3'
@@ -54,6 +53,7 @@ export interface SheetConfig {
   spacingMm: number;
   orientation: Orientation;
   grainDirection?: GrainDirection;
+  guillotineRequired?: boolean;
 }
 
 export interface ItemSpec {
@@ -76,6 +76,20 @@ export interface PlacedItem {
   name: string;
   color: string;
   index: number;
+  isPinned?: boolean;
+  sheetNumber?: number;
+}
+
+export interface PinnedPlacement {
+  itemId: string;
+  name?: string;
+  color?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotated: boolean;
+  sheetNumber?: number;
 }
 
 export interface SheetLayout {

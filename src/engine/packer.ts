@@ -1,4 +1,5 @@
 import { ITEM_COLORS } from '../constants/sheets';
+import { analyzeGuillotineCuts } from './guillotine';
 import type {
   ItemSpec,
   PackingResult,
@@ -474,15 +475,24 @@ export function computeQuickYield(
   const rotated = buildStrategyResult('rotated', 'Rotacionado (90°)', rotatedRaw);
   const mixed = buildStrategyResult('mixed', 'Misto (0° + 90°)', finalMixed.placements);
 
+  const guillotineRequired = sheet.guillotineRequired ?? false;
+  let mixedIsEligible = true;
+  if (guillotineRequired && mixed.count > 0) {
+    const analysis = analyzeGuillotineCuts(mixed.layout);
+    if (!analysis.isGuillotineCuttable) {
+      mixedIsEligible = false;
+    }
+  }
+
   const maxUniform = Math.max(normal.count, rotated.count);
   let bestStrategy: QuickStrategy = 'normal';
-  if (mixed.count > maxUniform) {
+  if (mixedIsEligible && mixed.count > maxUniform) {
     bestStrategy = 'mixed';
   } else if (rotated.count > normal.count) {
     bestStrategy = 'rotated';
   }
 
-  const extraFromMixed = Math.max(0, mixed.count - maxUniform);
+  const extraFromMixed = mixedIsEligible ? Math.max(0, mixed.count - maxUniform) : 0;
 
   return {
     normal,
@@ -512,7 +522,7 @@ function isContained(inner: FreeRect, outer: FreeRect): boolean {
   );
 }
 
-function splitAndPruneFreeRects(freeRects: FreeRect[], placed: FreeRect): FreeRect[] {
+export function splitAndPruneFreeRects(freeRects: FreeRect[], placed: FreeRect): FreeRect[] {
   const next: FreeRect[] = [];
 
   for (const fr of freeRects) {
@@ -677,10 +687,19 @@ function runMaxRectsPacking(
   usableH: number,
   marginMm: number,
   spacingMm: number,
+  initialBins?: SheetBin[],
 ): { bins: SheetBin[]; overflowed: ExpandedItem[] } {
   const binW = usableW + spacingMm;
   const binH = usableH + spacingMm;
-  const bins: SheetBin[] = [];
+  // Deep clone initialBins so each sort strategy starts fresh
+  const bins: SheetBin[] = initialBins
+    ? initialBins.map((b) => ({
+        sheetNumber: b.sheetNumber,
+        freeRects: b.freeRects.map((fr) => ({ ...fr })),
+        placedItems: b.placedItems.map((p) => ({ ...p })),
+        usedAreaMm2: b.usedAreaMm2,
+      }))
+    : [];
   const overflowed: ExpandedItem[] = [];
 
   for (const item of sortedItems) {
@@ -770,14 +789,21 @@ function runMaxRectsPacking(
 /**
  * Multi-item multi-sheet packer using MaxRects-BSSF across 1..N sheets.
  * Compares sort heuristics to minimize sheet count and maximize utilization.
+ * Optionally reserves pinned item placements first and packs remaining items around them.
  */
-export function packItems(sheet: SheetConfig, items: ItemSpec[]): PackingResult {
+export function packItems(
+  sheet: SheetConfig,
+  items: ItemSpec[],
+  pinnedItems?: PlacedItem[],
+): PackingResult {
   const widthMm = sanitizePositive(sheet.widthMm);
   const heightMm = sanitizePositive(sheet.heightMm);
   const marginMm = sanitizePositive(sheet.marginMm);
   const spacingMm = sanitizePositive(sheet.spacingMm);
   const usableW = Math.max(0, widthMm - 2 * marginMm);
   const usableH = Math.max(0, heightMm - 2 * marginMm);
+  const binW = usableW + spacingMm;
+  const binH = usableH + spacingMm;
 
   const unplacedMap = new Map<string, UnplacedItem>();
   const addUnplaced = (item: ItemSpec, qty: number, reason: string) => {
@@ -797,6 +823,67 @@ export function packItems(sheet: SheetConfig, items: ItemSpec[]): PackingResult 
       });
     }
   };
+
+  // Group valid pinned items by sheetNumber (1-based, default 1)
+  const initialBinsMap = new Map<number, SheetBin>();
+  const pinnedCountsByItem = new Map<string, number>();
+
+  if (pinnedItems && pinnedItems.length > 0) {
+    for (const pin of pinnedItems) {
+      const sheetNum = Math.max(1, pin.sheetNumber ?? 1);
+      let bin = initialBinsMap.get(sheetNum);
+      if (!bin) {
+        bin = {
+          sheetNumber: sheetNum,
+          freeRects: [{ x: 0, y: 0, width: binW, height: binH }],
+          placedItems: [],
+          usedAreaMm2: 0,
+        };
+        initialBinsMap.set(sheetNum, bin);
+      }
+
+      // Convert from sheet coordinates to bin coordinates (relative to margin)
+      const relX = pin.x - marginMm;
+      const relY = pin.y - marginMm;
+      const inflatedW = pin.width + spacingMm;
+      const inflatedH = pin.height + spacingMm;
+
+      bin.placedItems.push({
+        ...pin,
+        isPinned: true,
+        sheetNumber: sheetNum,
+        index: bin.placedItems.length + 1,
+      });
+      bin.usedAreaMm2 += pin.width * pin.height;
+
+      // Slice and prune freeRects to carve out the pinned item's reserved footprint
+      bin.freeRects = splitAndPruneFreeRects(bin.freeRects, {
+        x: relX,
+        y: relY,
+        width: inflatedW,
+        height: inflatedH,
+      });
+
+      pinnedCountsByItem.set(pin.itemId, (pinnedCountsByItem.get(pin.itemId) ?? 0) + 1);
+    }
+  }
+
+  // Convert map to contiguous/sorted initial bins
+  const maxInitialSheet = Math.max(0, ...Array.from(initialBinsMap.keys()));
+  const initialBins: SheetBin[] = [];
+  for (let s = 1; s <= maxInitialSheet; s++) {
+    const existing = initialBinsMap.get(s);
+    if (existing) {
+      initialBins.push(existing);
+    } else {
+      initialBins.push({
+        sheetNumber: s,
+        freeRects: [{ x: 0, y: 0, width: binW, height: binH }],
+        placedItems: [],
+        usedAreaMm2: 0,
+      });
+    }
+  }
 
   let totalRequested = 0;
   const eligibleExpanded: ExpandedItem[] = [];
@@ -826,7 +913,11 @@ export function packItems(sheet: SheetConfig, items: ItemSpec[]): PackingResult 
       continue;
     }
 
-    for (let i = 0; i < qty; i++) {
+    // Deduct already pinned quantities for this item
+    const alreadyPinned = pinnedCountsByItem.get(item.id) ?? 0;
+    const remainingQty = Math.max(0, qty - alreadyPinned);
+
+    for (let i = 0; i < remainingQty; i++) {
       eligibleExpanded.push({
         itemId: item.id,
         name: item.name,
@@ -839,6 +930,26 @@ export function packItems(sheet: SheetConfig, items: ItemSpec[]): PackingResult 
   }
 
   if (eligibleExpanded.length === 0) {
+    // If we only have pinned items
+    if (initialBins.length > 0) {
+      const sheets: SheetLayout[] = initialBins.map((bin) =>
+        createSheetLayout(bin.sheetNumber, sheet, bin.placedItems),
+      );
+      const totalPlaced = sheets.reduce((sum, s) => sum + s.placedItems.length, 0);
+      const totalUsedArea = sheets.reduce((sum, s) => sum + s.usedAreaMm2, 0);
+      const totalSheetArea = sheets.reduce((sum, s) => sum + s.totalAreaMm2, 0);
+      const overallUtilizationPercent = totalSheetArea > 0 ? (totalUsedArea / totalSheetArea) * 100 : 0;
+      const overallWastePercent = totalSheetArea > 0 ? Math.max(0, 100 - overallUtilizationPercent) : 0;
+      return {
+        sheets,
+        totalPlaced,
+        totalRequested,
+        unplacedItems: Array.from(unplacedMap.values()),
+        overallUtilizationPercent,
+        overallWastePercent,
+      };
+    }
+
     return {
       sheets: [],
       totalPlaced: 0,
@@ -856,7 +967,7 @@ export function packItems(sheet: SheetConfig, items: ItemSpec[]): PackingResult 
 
   for (const strategy of strategies) {
     const sorted = sortExpandedItems(eligibleExpanded, strategy);
-    const result = runMaxRectsPacking(sorted, usableW, usableH, marginMm, spacingMm);
+    const result = runMaxRectsPacking(sorted, usableW, usableH, marginMm, spacingMm, initialBins);
 
     if (!bestRun) {
       bestRun = result;

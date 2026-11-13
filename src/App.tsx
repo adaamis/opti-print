@@ -15,6 +15,7 @@ import { calculatePricing } from './engine/pricing';
 import type {
   AppMode,
   ItemSpec,
+  PlacedItem,
   PricingConfig,
   QuickStrategy,
   SheetConfig,
@@ -58,6 +59,7 @@ export function App(): React.ReactElement {
   // Multi-item mode state
   const [multiItems, setMultiItems] = useState<ItemSpec[]>(DEFAULT_MULTI_ITEMS);
   const [activeSheetIndex, setActiveSheetIndex] = useState<number>(0);
+  const [pinnedItems, setPinnedItems] = useState<PlacedItem[]>([]);
 
   // Commercial print shop pricing configuration & modal state
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(() => loadSavedPricingConfig());
@@ -80,6 +82,47 @@ export function App(): React.ReactElement {
     setIsRecommenderModalOpen(false);
   };
 
+  const handleItemMove = (item: PlacedItem, newX: number, newY: number) => {
+    setPinnedItems((prev) => {
+      const filtered = prev.filter(
+        (p) => !(p.itemId === item.itemId && p.index === item.index && (p.sheetNumber ?? 1) === (item.sheetNumber ?? (activeSheetIndex + 1)))
+      );
+      return [
+        ...filtered,
+        {
+          ...item,
+          x: newX,
+          y: newY,
+          isPinned: true,
+          sheetNumber: item.sheetNumber ?? (activeSheetIndex + 1),
+        },
+      ];
+    });
+  };
+
+  const handleItemPinChange = (item: PlacedItem, isPinned: boolean) => {
+    setPinnedItems((prev) => {
+      const filtered = prev.filter(
+        (p) => !(p.itemId === item.itemId && p.index === item.index && (p.sheetNumber ?? 1) === (item.sheetNumber ?? (activeSheetIndex + 1)))
+      );
+      if (isPinned) {
+        return [
+          ...filtered,
+          {
+            ...item,
+            isPinned: true,
+            sheetNumber: item.sheetNumber ?? (activeSheetIndex + 1),
+          },
+        ];
+      }
+      return filtered;
+    });
+  };
+
+  const handleResetPins = () => {
+    setPinnedItems([]);
+  };
+
   // Compute Quick Mode Comparison
   const quickComparison = useMemo(() => {
     return computeQuickYield(sheet, quickWidthMm, quickHeightMm, quickName || 'Peça', ITEM_COLORS[0]);
@@ -87,8 +130,8 @@ export function App(): React.ReactElement {
 
   // Compute Multi-Item Packing Result
   const multiResult = useMemo(() => {
-    return packItems(sheet, multiItems);
-  }, [sheet, multiItems]);
+    return packItems(sheet, multiItems, pinnedItems);
+  }, [sheet, multiItems, pinnedItems]);
 
   // Resolve active layouts and metrics depending on current mode
   const isQuick = mode === 'quick';
@@ -279,6 +322,13 @@ export function App(): React.ReactElement {
             unit={unit}
             guillotineAnalysis={guillotineAnalysis}
             onOpenGuillotineModal={() => setIsGuillotineModalOpen(true)}
+            guillotineRequired={sheet.guillotineRequired ?? true}
+            onToggleGuillotineRequired={(required) =>
+              setSheet((prev) => ({ ...prev, guillotineRequired: required }))
+            }
+            onItemMove={handleItemMove}
+            onItemPinChange={handleItemPinChange}
+            onResetPins={handleResetPins}
           />
         </section>
       </main>

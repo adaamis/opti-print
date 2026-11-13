@@ -94,14 +94,6 @@ export const SHEET_PRESET_GROUPS: SheetPresetGroup[] = [
         heightMm: 841,
         category: 'Série ISO A',
       },
-      {
-        id: 'A0',
-        name: 'A0',
-        description: '841 × 1189 mm',
-        widthMm: 841,
-        heightMm: 1189,
-        category: 'Série ISO A',
-      },
     ],
   },
   {
@@ -241,6 +233,7 @@ export const DEFAULT_SHEET_CONFIG: SheetConfig = {
   spacingMm: 2,
   orientation: 'portrait',
   grainDirection: 'long',
+  guillotineRequired: true,
 };
 
 export interface SampleElementPreset {

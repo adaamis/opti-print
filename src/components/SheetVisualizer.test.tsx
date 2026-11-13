@@ -502,6 +502,78 @@ describe('SheetVisualizer component', () => {
     });
   });
 
+  describe('Interactive Drag and Pin items', () => {
+    it('renders pinned badge on placed items when isPinned is true and displays Unpin All button', () => {
+      const layoutWithPin: SheetLayout = {
+        ...mockLayout,
+        placedItems: [
+          {
+            ...mockLayout.placedItems[0],
+            isPinned: true,
+          },
+          mockLayout.placedItems[1],
+        ],
+      };
+
+      const html = renderToStaticMarkup(
+        <SheetVisualizer
+          layouts={[layoutWithPin]}
+          activeSheetIndex={0}
+          onSelectSheet={vi.fn()}
+          unit="mm"
+          onResetPins={vi.fn()}
+        />
+      );
+
+      // Pinned badge for item 0
+      expect(html).toContain('data-testid="item-pinned-badge-0"');
+      expect(html).toContain('📌');
+
+      // Unpin All toolbar button
+      expect(html).toContain('data-testid="unpin-all-btn"');
+      expect(html).toContain('Desafixar Todos (1)');
+    });
+  });
+
+  describe('Guillotine cut requirement toggle in toolbar', () => {
+    it('renders toggle button when onToggleGuillotineRequired is provided', () => {
+      const onToggle = vi.fn();
+      const html = renderToStaticMarkup(
+        <SheetVisualizer
+          layouts={[mockLayout]}
+          activeSheetIndex={0}
+          onSelectSheet={vi.fn()}
+          unit="mm"
+          guillotineRequired={true}
+          onToggleGuillotineRequired={onToggle}
+        />
+      );
+
+      expect(html).toContain('data-testid="toggle-guillotine-required"');
+      expect(html).toContain('Exigir Guilhotina');
+      expect(html).toContain('data-testid="guillotine-required-checkbox"');
+      expect(html).toContain('checked=""');
+    });
+
+    it('renders unchecked state when guillotineRequired is false', () => {
+      const onToggle = vi.fn();
+      const html = renderToStaticMarkup(
+        <SheetVisualizer
+          layouts={[mockLayout]}
+          activeSheetIndex={0}
+          onSelectSheet={vi.fn()}
+          unit="mm"
+          guillotineRequired={false}
+          onToggleGuillotineRequired={onToggle}
+        />
+      );
+
+      expect(html).toContain('data-testid="toggle-guillotine-required"');
+      expect(html).toContain('Exigir Guilhotina');
+      expect(html).not.toMatch(/data-testid="guillotine-required-checkbox"[^>]*checked/);
+    });
+  });
+
   describe('Dark Mode Studio (Folha Escura / Estúdio Gráfico)', () => {
     it('renders studio dark styling classes for sheet canvas, substrate, items and guides', () => {
       const html = renderToStaticMarkup(

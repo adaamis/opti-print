@@ -21,7 +21,7 @@ describe('SHEET_PRESET_GROUPS and SHEET_PRESETS', () => {
     expect(isoGroup).toBeDefined();
 
     const ids = isoGroup?.items.map((i) => i.id);
-    expect(ids).toContain('A0');
+    expect(ids).not.toContain('A0');
     expect(ids).toContain('A1');
     expect(ids).toContain('A2');
     expect(ids).toContain('A3');
@@ -30,7 +30,7 @@ describe('SHEET_PRESET_GROUPS and SHEET_PRESETS', () => {
     expect(ids).toContain('A5');
     expect(ids).toContain('A6');
 
-    expect(SHEET_PRESETS.A0).toMatchObject({ widthMm: 841, heightMm: 1189 });
+    expect(SHEET_PRESETS.A0).toBeUndefined();
     expect(SHEET_PRESETS.A1).toMatchObject({ widthMm: 594, heightMm: 841 });
     expect(SHEET_PRESETS.A2).toMatchObject({ widthMm: 420, heightMm: 594 });
     expect(SHEET_PRESETS.A3).toMatchObject({ widthMm: 297, heightMm: 420 });
@@ -81,5 +81,6 @@ describe('SHEET_PRESET_GROUPS and SHEET_PRESETS', () => {
     expect(DEFAULT_SHEET_CONFIG.heightMm).toBe(420);
     expect(DEFAULT_SHEET_CONFIG.orientation).toBe('portrait');
     expect(DEFAULT_SHEET_CONFIG.grainDirection).toBe('long');
+    expect(DEFAULT_SHEET_CONFIG.guillotineRequired).toBe(true);
   });
 });
