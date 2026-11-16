@@ -1,3 +1,4 @@
+import { getLanguage } from '../i18n/i18n';
 import type { Unit } from '../types/optimizer';
 
 export function toMm(value: number, unit: Unit): number {
@@ -11,11 +12,13 @@ export function fromMm(valueMm: number, unit: Unit): number {
   return Math.round(raw * 100) / 100;
 }
 
-export function formatNumber(value: number, maxDecimals = 1): string {
+export function formatNumber(value: number, maxDecimals = 1, locale?: string): string {
   if (!Number.isFinite(value)) return '0';
   const factor = 10 ** maxDecimals;
   const rounded = Math.round(value * factor) / factor;
-  return rounded.toLocaleString('pt-BR', {
+  const currentLang = locale || getLanguage();
+  const intlLocale = currentLang === 'en' ? 'en-US' : 'pt-BR';
+  return rounded.toLocaleString(intlLocale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: maxDecimals,
   });

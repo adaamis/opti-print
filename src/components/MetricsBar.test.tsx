@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { calculatePricing } from '../engine/pricing';
+import { resetLanguageForTesting, setLanguage } from '../i18n';
 import type { SheetLayout } from '../types/optimizer';
 import { DEFAULT_PRICING_CONFIG } from '../utils/pricingStorage';
 import { MetricsBar } from './MetricsBar';
@@ -99,6 +100,43 @@ describe('MetricsBar component', () => {
     expect(html).toContain('Custo de Produção');
     expect(html).toContain('Custo Unitário');
     expect(html).toContain('Perda em Aparas');
+    expect(html).toContain('14,5% de papel não aproveitado');
+  });
+
+  it('renders translated metrics and waste label in English', () => {
+    setLanguage('en');
+    const pricingCalculation = calculatePricing({
+      totalSheets: 3,
+      placedCount: 24,
+      wastePercent: 14.5,
+      config: DEFAULT_PRICING_CONFIG,
+    });
+
+    const html = renderToStaticMarkup(
+      <MetricsBar
+        utilizationPercent={85.5}
+        wastePercent={14.5}
+        placedCount={24}
+        requestedCount={50}
+        sheetsCount={3}
+        activeLayout={mockLayout}
+        isQuickMode={false}
+        pricingCalculation={pricingCalculation}
+        pricingConfig={DEFAULT_PRICING_CONFIG}
+        onOpenPricingModal={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('Yield');
+    expect(html).toContain('Waste / Trim');
+    expect(html).toContain('Accommodated Pieces');
+    expect(html).toContain('Sheets Needed');
+    expect(html).toContain('Pricing');
+    expect(html).toContain('Export SVG (1:1)');
+    expect(html).toContain('Print / PDF');
+    expect(html).toContain('14.5% unutilized paper');
+
+    resetLanguageForTesting('pt-BR');
   });
 
   it('hides financial metrics row when all pricing costs are zero', () => {

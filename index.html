@@ -3,24 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OptiPrint |  Otimização de Folha e Aproveitamento Gráfico</title>
+    <title data-i18n="nav.documentTitle">OptiPrint |  Otimização de Folha e Aproveitamento Gráfico</title>
     <meta
       name="description"
+      data-i18n="nav.metaDescription"
       content="OptiPrint: Suíte de inteligência gráfica e otimização de folhas de papel. Calcule rendimento, aninhamento misto e exporte em SVG 1:1."
     />
     <script>
       (function () {
         try {
-          var stored = localStorage.getItem('optiprint_theme');
+          var storedTheme = localStorage.getItem('optiprint_theme');
           var isDark =
-            stored === 'dark' ||
-            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            storedTheme === 'dark' ||
+            (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (isDark) {
             document.documentElement.classList.add('dark');
             document.documentElement.style.colorScheme = 'dark';
           } else {
             document.documentElement.classList.remove('dark');
             document.documentElement.style.colorScheme = 'light';
+          }
+
+          var storedLang = localStorage.getItem('app_user_language');
+          if (storedLang === 'en' || storedLang === 'pt-BR') {
+            document.documentElement.lang = storedLang;
           }
         } catch (e) {}
       })();

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { resetLanguageForTesting, setLanguage } from '../i18n';
 import type { GuillotineAnalysis, SheetLayout } from '../types/optimizer';
 import { SheetVisualizer } from './SheetVisualizer';
 
@@ -611,6 +612,46 @@ describe('SheetVisualizer component', () => {
 
       // Crop marks group has dark mode stroke
       expect(html).toContain('dark:stroke-slate-400');
+    });
+  });
+
+  describe('Internationalization & English Language parity', () => {
+    it('renders translated strings when language is set to English', () => {
+      setLanguage('en');
+      const html = renderToStaticMarkup(
+        <SheetVisualizer
+          layouts={[mockLayout]}
+          activeSheetIndex={0}
+          onSelectSheet={vi.fn()}
+          unit="mm"
+          guillotineAnalysis={{
+            isGuillotineCuttable: true,
+            totalCutsNeeded: 2,
+            steps: [],
+            efficiencyRating: 'ideal',
+            message: 'Ideal',
+          }}
+          onOpenGuillotineModal={vi.fn()}
+          guillotineRequired={true}
+          onToggleGuillotineRequired={vi.fn()}
+        />
+      );
+
+      // Sheet pagination in English
+      expect(html).toContain('Sheet 1 of 1');
+      // Guillotine required toggle
+      expect(html).toContain('Require Guillotine Cuts');
+      // Guillotine button
+      expect(html).toContain('Guillotine');
+      // Zoom controls titles
+      expect(html).toContain('title="Zoom in"');
+      expect(html).toContain('title="Zoom out"');
+      // Step-by-step
+      expect(html).toContain('Step-by-Step');
+      // Canvas footer inspect tooltip
+      expect(html).toContain('Hover over an element to inspect exact dimensions');
+
+      resetLanguageForTesting('pt-BR');
     });
   });
 });

@@ -12,6 +12,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { analyzeGuillotineCuts } from '../engine/guillotine';
+import { useTranslation } from '../i18n';
 import type { GuillotineAnalysis, PlacedItem, SheetLayout, Unit } from '../types/optimizer';
 import { formatDim } from '../utils/units';
 
@@ -60,6 +61,7 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
   onItemMove,
   onResetPins,
 }) => {
+  const { t } = useTranslation();
   const [zoomPercent, setZoomPercent] = useState<number>(100);
   const [showCutGuides, setShowCutGuides] = useState<boolean>(true);
   const [showLabels, setShowLabels] = useState<boolean>(true);
@@ -195,10 +197,17 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
     return (
       <div className="flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-stone-200 bg-[#F7F7F5] p-8 text-center text-stone-500 shadow-xs dark:border-[#1E2B45] dark:bg-[#070B14] dark:text-slate-400">
         <Layers className="mb-2 h-10 w-10 text-stone-400 stroke-1 dark:text-slate-500" />
-        <h3 className="font-semibold text-stone-800 dark:text-slate-100">Nenhuma folha gerada</h3>
-        <p className="mt-1 max-w-sm text-xs text-stone-400 font-light dark:text-slate-500">
-          Configure as medidas da folha e adicione pelo menos um elemento válido para visualizar
-          o arranjo de corte.
+        <h3
+          data-i18n="common.visualizer.noSheetGenerated"
+          className="font-semibold text-stone-800 dark:text-slate-100"
+        >
+          {t('common.visualizer.noSheetGenerated')}
+        </h3>
+        <p
+          data-i18n="common.visualizer.configureSheetPrompt"
+          className="mt-1 max-w-sm text-xs text-stone-400 font-light dark:text-slate-500"
+        >
+          {t('common.visualizer.configureSheetPrompt')}
         </p>
       </div>
     );
@@ -211,7 +220,7 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
   const usableH = Math.max(0, h - 2 * margin);
 
   const isShortGrain = activeLayout.grainDirection === 'short';
-  const grainLabel = isShortGrain ? 'Fibra: Curta ↔' : 'Fibra: Longa ↕';
+  const grainLabel = isShortGrain ? t('common.visualizer.grainShort') : t('common.visualizer.grainLong');
   const grainX = Math.max(2, w - Math.max(margin, 2) - 42);
   const grainY = Math.max(5, margin > 0 ? margin + 3.2 : 5);
   const arrowX = grainX + 28;
@@ -241,7 +250,9 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                       : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200/70 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300 dark:hover:bg-[#18243C]'
                   }`}
                 >
-                  <span>Folha {layout.sheetNumber}</span>
+                  <span data-i18n="common.visualizer.sheetNumber">
+                    {t('common.visualizer.sheetNumber', { number: layout.sheetNumber })}
+                  </span>
                   <span
                     className={`rounded-full px-1.5 py-0.2 text-[10px] ${
                       active
@@ -257,7 +268,11 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
           ) : (
             <div className="flex items-center gap-2 text-xs font-medium text-stone-700 dark:text-slate-300">
               <span className="inline-flex h-2 w-2 rounded-full bg-teal-600" />
-              Folha 1 de 1 ({activeLayout.placedItems.length} peças)
+              <span data-i18n="common.sheetPagination">
+                {t('common.sheetPagination', { current: 1, total: 1 })}
+              </span>{' '}
+              ({activeLayout.placedItems.length}{' '}
+              {activeLayout.placedItems.length === 1 ? t('common.units.piece') : t('common.units.pieces')})
             </div>
           )}
 
@@ -267,11 +282,12 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
               type="button"
               data-testid="unpin-all-btn"
               onClick={onResetPins}
+              data-i18n="common.visualizer.unpinAll"
               title="Desafixar todos os elementos e retornar ao arranjo automático"
               className="inline-flex items-center gap-1 rounded-xl bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60"
             >
               <PinOff className="h-3 w-3" />
-              Desafixar Todos ({pinnedItemsCount})
+              {t('common.visualizer.unpinAll', { count: pinnedItemsCount })}
             </button>
           )}
 
@@ -285,29 +301,35 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
               {resolvedGuillotineAnalysis.isGuillotineCuttable ? (
                 <span
                   data-testid="guillotine-viability-badge"
+                  data-i18n="common.visualizer.cuttableBadge"
                   className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Guilhotinável ({resolvedGuillotineAnalysis.totalCutsNeeded}{' '}
-                  {resolvedGuillotineAnalysis.totalCutsNeeded === 1 ? 'corte' : 'cortes'})
+                  {resolvedGuillotineAnalysis.totalCutsNeeded === 1
+                    ? t('common.visualizer.cuttableSingleBadge')
+                    : t('common.visualizer.cuttableBadge', {
+                        count: resolvedGuillotineAnalysis.totalCutsNeeded,
+                      })}
                 </span>
               ) : (
                 <span
                   data-testid="guillotine-viability-badge"
+                  data-i18n="common.visualizer.nonCuttableBadge"
                   className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/70 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Não Guilhotinável (Pinwheel)
+                  {t('common.visualizer.nonCuttableBadge')}
                 </span>
               )}
               {onOpenGuillotineModal && (
                 <button
                   type="button"
                   data-testid="open-guillotine-modal-btn"
+                  data-i18n="common.visualizer.seeStepByStep"
                   onClick={onOpenGuillotineModal}
                   className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 underline underline-offset-2 transition-colors cursor-pointer whitespace-nowrap dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
-                  Ver Passo a Passo
+                  {t('common.visualizer.seeStepByStep')}
                 </button>
               )}
             </div>
@@ -320,7 +342,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
           {onToggleGuillotineRequired && (
             <label
               data-testid="toggle-guillotine-required"
-              title="Exigir corte de guilhotina linear de ponta a ponta (garante cortes retos de ponta a ponta sem fatiar peças adjacentes)"
+              title={t('common.visualizer.guillotineRequiredTooltip')}
+              data-i18n-title="common.visualizer.guillotineRequiredTooltip"
               className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium border cursor-pointer select-none transition-colors ${
                 (guillotineRequired ?? true)
                   ? 'bg-amber-50/80 text-amber-900 border-amber-300 dark:border-amber-700/70 dark:bg-amber-950/50 dark:text-amber-200'
@@ -339,7 +362,9 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                   (guillotineRequired ?? true) ? 'bg-amber-500' : 'bg-stone-300 dark:bg-slate-600'
                 }`}
               />
-              <span className="whitespace-nowrap">Exigir Guilhotina</span>
+              <span data-i18n="nav.requireGuillotine" className="whitespace-nowrap">
+                {t('nav.requireGuillotine')}
+              </span>
             </label>
           )}
 
@@ -347,6 +372,7 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             type="button"
             onClick={handleToggleGuillotineCuts}
             data-testid="toggle-guillotine-cuts-btn"
+            data-i18n="nav.guillotine"
             title="Alternar visualização das linhas e números dos cortes sequenciais de guilhotina"
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
               showGuillotineCuts
@@ -355,12 +381,13 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }`}
           >
             <Scissors className="h-3.5 w-3.5" />
-            Guilhotina
+            {t('nav.guillotine')}
           </button>
 
           <button
             type="button"
             onClick={() => setShowCutGuides(!showCutGuides)}
+            data-i18n="common.visualizer.cutGuides"
             title="Alternar visibilidade das guias de corte e margem de pinça"
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors ${
               showCutGuides
@@ -369,12 +396,13 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }`}
           >
             <Scissors className="h-3.5 w-3.5" />
-            Guias de Corte
+            {t('common.visualizer.cutGuides')}
           </button>
 
           <button
             type="button"
             onClick={handleToggleCropMarks}
+            data-i18n="common.visualizer.cropMarks"
             title="Alternar cruzetas de corte profissionais (offset 2mm, comprimento 4mm)"
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors ${
               showCropMarks
@@ -383,12 +411,13 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }`}
           >
             <Crosshair className="h-3.5 w-3.5" />
-            Cruzetas
+            {t('common.visualizer.cropMarks')}
           </button>
 
           <button
             type="button"
             onClick={handleToggleBleed}
+            data-i18n="common.visualizer.bleed"
             title="Alternar linhas de sangria externa (2mm)"
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors ${
               showBleed
@@ -397,12 +426,13 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }`}
           >
             <SquareDashed className="h-3.5 w-3.5" />
-            Sangria
+            {t('common.visualizer.bleed')}
           </button>
 
           <button
             type="button"
             onClick={() => setShowLabels(!showLabels)}
+            data-i18n="common.visualizer.labels"
             title="Alternar etiquetas com nome e medidas nos elementos"
             className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors ${
               showLabels
@@ -411,7 +441,7 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             }`}
           >
             <Eye className="h-3.5 w-3.5" />
-            Etiquetas
+            {t('common.visualizer.labels')}
           </button>
 
           <div className="h-4 w-px bg-stone-200 mx-1 dark:bg-slate-700" />
@@ -421,7 +451,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             <button
               type="button"
               onClick={() => handleZoom(-15)}
-              title="Reduzir zoom"
+              title={t('common.zoomOut')}
+              data-i18n-title="common.zoomOut"
               className="p-1 text-stone-600 hover:bg-stone-100 rounded-full transition-colors dark:text-slate-300 dark:hover:bg-[#18243C]"
             >
               <ZoomOut className="h-3.5 w-3.5" />
@@ -429,7 +460,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             <button
               type="button"
               onClick={handleResetZoom}
-              title="Restaurar tamanho padrão (100%)"
+              title={t('common.visualizer.resetZoom')}
+              data-i18n-title="common.visualizer.resetZoom"
               className="px-2 py-0.5 font-mono text-[11px] font-medium text-stone-700 hover:bg-stone-100 rounded-full transition-colors dark:text-slate-200 dark:hover:bg-[#18243C]"
             >
               {zoomPercent}%
@@ -437,7 +469,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
             <button
               type="button"
               onClick={() => handleZoom(15)}
-              title="Aumentar zoom"
+              title={t('common.zoomIn')}
+              data-i18n-title="common.zoomIn"
               className="p-1 text-stone-600 hover:bg-stone-100 rounded-full transition-colors dark:text-slate-300 dark:hover:bg-[#18243C]"
             >
               <ZoomIn className="h-3.5 w-3.5" />
@@ -821,12 +854,15 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
       <div className="no-print flex flex-wrap items-center justify-between gap-2 border-t border-stone-200/60 bg-stone-50/60 px-5 py-2.5 text-xs text-stone-500 dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-400">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-medium text-stone-800 dark:text-slate-200">
-            Dimensões da Folha: {formatDim(w, unit, false)} × {formatDim(h, unit)}
+            {t('common.visualizer.sheetDimensions', {
+              width: formatDim(w, unit, false),
+              height: formatDim(h, unit),
+            })}
           </span>
           <span className="text-stone-300 dark:text-slate-600">•</span>
-          <span>Margem: {formatDim(margin, unit)}</span>
+          <span>{t('common.visualizer.margin', { margin: formatDim(margin, unit, false) })}</span>
           <span className="text-stone-300 dark:text-slate-600">•</span>
-          <span>Espaçamento: {formatDim(activeLayout.spacingMm, unit)}</span>
+          <span>{t('common.visualizer.spacing', { spacing: formatDim(activeLayout.spacingMm, unit, false) })}</span>
           <span className="text-stone-300 dark:text-slate-600">•</span>
           <span
             data-testid="footer-grain-direction"
@@ -847,8 +883,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
                 className="inline-flex items-center gap-1 rounded-md bg-stone-200/60 border border-stone-300/40 px-2 py-0.5 font-sans font-medium text-[11px] text-stone-700 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300"
               >
                 {[
-                  showCropMarks ? 'Cruzetas (4mm / offset 2mm)' : null,
-                  showBleed ? 'Sangria (2mm)' : null,
+                  showCropMarks ? t('common.visualizer.guidesBadgeCropOnly') : null,
+                  showBleed ? t('common.visualizer.guidesBadgeBleedOnly') : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -867,11 +903,18 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
               >
                 <Scissors className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
                 {resolvedGuillotineAnalysis.isGuillotineCuttable
-                  ? `Guilhotina: ${resolvedGuillotineAnalysis.totalCutsNeeded} ${resolvedGuillotineAnalysis.totalCutsNeeded === 1 ? 'corte' : 'cortes'}`
-                  : 'Guilhotina: Não viável (Pinwheel)'}
+                  ? resolvedGuillotineAnalysis.totalCutsNeeded === 1
+                    ? t('common.visualizer.guillotineStatusSingleFooter')
+                    : t('common.visualizer.guillotineStatusFooter', {
+                        count: resolvedGuillotineAnalysis.totalCutsNeeded,
+                      })
+                  : t('common.visualizer.guillotineStatusNonCuttableFooter')}
                 {onOpenGuillotineModal && (
-                  <span className="underline ml-0.5 font-normal text-indigo-800 dark:text-indigo-300">
-                    Passo a Passo
+                  <span
+                    data-i18n="common.stepByStep"
+                    className="underline ml-0.5 font-normal text-indigo-800 dark:text-indigo-300"
+                  >
+                    {t('common.stepByStep')}
                   </span>
                 )}
               </button>
@@ -898,8 +941,8 @@ export const SheetVisualizer: React.FC<SheetVisualizerProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-[11px] text-stone-400 font-light dark:text-slate-500">
-            <Info className="h-3 w-3" />
-            Passe o mouse sobre um elemento para inspecionar medidas exatas
+            <Info className="h-3 w-3 shrink-0" />
+            <span data-i18n="common.inspectTooltip">{t('common.inspectTooltip')}</span>
           </div>
         )}
       </div>

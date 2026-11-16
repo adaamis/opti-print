@@ -1,10 +1,19 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetLanguageForTesting, setLanguage } from '../i18n';
 import type { PricingConfig } from '../types/optimizer';
 import { DEFAULT_PRICING_CONFIG } from '../utils/pricingStorage';
 import { SubstrateRecommenderModal } from './SubstrateRecommenderModal';
 
 describe('SubstrateRecommenderModal component', () => {
+  beforeEach(() => {
+    resetLanguageForTesting('pt-BR');
+  });
+
+  afterEach(() => {
+    resetLanguageForTesting('pt-BR');
+  });
+
   const defaultPricing: PricingConfig = {
     costPerSheet: 1.5,
     clickCost: 0.35,
@@ -146,5 +155,46 @@ describe('SubstrateRecommenderModal component', () => {
     expect(html).toContain('Nenhum formato viável encontrado');
     expect(html).toContain('5000 × 5000 mm');
     expect(html).not.toContain('Melhor Escolha (#1)');
+  });
+
+  it('renders all categories, presets, and KPIs in English when active language is en', () => {
+    setLanguage('en');
+
+    const html = renderToStaticMarkup(
+      <SubstrateRecommenderModal
+        isOpen={true}
+        onClose={vi.fn()}
+        itemWidthMm={90}
+        itemHeightMm={50}
+        itemName="Cartão de Visita"
+        marginMm={5}
+        spacingMm={2}
+        currentPresetId="A3"
+        pricingConfig={defaultPricing}
+        onApplyPreset={vi.fn()}
+      />
+    );
+
+    // English item name & subtitle specs
+    expect(html).toContain('Business Card');
+    expect(html).toContain('Item:');
+    expect(html).toContain('Margin: 5 mm');
+    expect(html).toContain('Bleed/Spacing: 2 mm');
+
+    // English category pills
+    expect(html).toContain('All');
+    expect(html).toContain('ISO Series A');
+    expect(html).toContain('Commercial Offset (Brazil)');
+    expect(html).toContain('Saved Formats');
+
+    // English champion card & KPIs
+    expect(html).toContain('Best Choice (#1)');
+    expect(html).toContain('shts');
+    expect(html).toContain('Layout:');
+    expect(html).toContain('Residual scrap:');
+
+    // English table headers
+    expect(html).toContain('Category');
+    expect(html).toContain('Scrap');
   });
 });

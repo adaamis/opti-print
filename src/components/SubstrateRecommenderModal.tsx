@@ -1,12 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Award,
   Check,
+  Info,
   Layers,
+  Medal,
+  Trophy,
   X,
 } from 'lucide-react';
 import { BUILTIN_SHEET_PRESETS } from '../constants/sheets';
 import { recommendSubstrates } from '../engine/recommender';
+import {
+  getLocalizedCategory,
+  getLocalizedPresetItemName,
+  getLocalizedSheetPresetName,
+  useTranslation,
+} from '../i18n';
 import type {
   PricingConfig,
   SheetPreset,
@@ -58,6 +68,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
   pricingConfig,
   onApplyPreset,
 }) => {
+  const { t, language } = useTranslation();
   const [targetQuantity, setTargetQuantity] = useState<number>(1000);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('Todos');
 
@@ -146,14 +157,18 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
     onClose();
   };
 
+  const getCategoryLabel = (cat: CategoryFilter) => {
+    return getLocalizedCategory(cat, language);
+  };
+
   const getStrategyLabel = (strategy: string) => {
     switch (strategy) {
       case 'mixed':
-        return 'Misto Máximo';
+        return language === 'pt-BR' ? 'Misto Máximo' : 'Maximum Mixed';
       case 'rotated':
-        return 'Rotacionado (90°)';
+        return language === 'pt-BR' ? 'Rotacionado (90°)' : 'Rotated (90°)';
       default:
-        return 'Normal (0°)';
+        return language === 'pt-BR' ? 'Normal (0°)' : 'Normal (0°)';
     }
   };
 
@@ -161,21 +176,21 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
     if (rank === 1) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900 border border-amber-300">
-          🏆 #1
+          <Trophy className="h-3.5 w-3.5 text-amber-500" /> #1
         </span>
       );
     }
     if (rank === 2) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-bold text-stone-700 border border-stone-300">
-          🥈 #2
+          <Medal className="h-3.5 w-3.5 text-slate-400" /> #2
         </span>
       );
     }
     if (rank === 3) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
-          🥉 #3
+          <Award className="h-3.5 w-3.5 text-amber-700" /> #3
         </span>
       );
     }
@@ -213,20 +228,24 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
               <div className="flex flex-wrap items-center gap-2">
                 <h2
                   id="recommender-modal-title"
+                  data-i18n="modals.recommender.title"
                   className="text-base font-semibold tracking-tight text-stone-900 sm:text-lg dark:text-slate-100"
                 >
-                  Recomendação e Comparação de Qual Folha Comprar
+                  {t('modals.recommender.title')}
                 </h2>
-                <span className="rounded-full bg-teal-100/70 px-2.5 py-0.5 text-[11px] font-medium text-teal-800 dark:bg-teal-950/60 dark:text-teal-300">
-                  Otimizador Inteligente
+                <span
+                  data-i18n="modals.recommender.badge"
+                  className="rounded-full bg-teal-100/70 px-2.5 py-0.5 text-[11px] font-medium text-teal-800 dark:bg-teal-950/60 dark:text-teal-300"
+                >
+                  {t('modals.recommender.badge')}
                 </span>
               </div>
               <p id="recommender-modal-desc" className="mt-1 text-xs text-stone-500 dark:text-slate-400">
-                Peça:{' '}
+                {t('modals.recommender.itemLabel')}{' '}
                 <strong className="text-stone-800 font-medium dark:text-slate-200">
-                  {itemName || 'Elemento Gráfico'}
+                  {getLocalizedPresetItemName(itemName, language) || t('modals.recommender.graphicElement')}
                 </strong>{' '}
-                ({itemWidthMm} × {itemHeightMm} mm) · Margem: {marginMm} mm · Sangria/Espaçamento:{' '}
+                ({itemWidthMm} × {itemHeightMm} mm) · {t('modals.recommender.marginLabel')} {marginMm} mm · {t('modals.recommender.spacingLabel')}{' '}
                 {spacingMm} mm
               </p>
             </div>
@@ -236,7 +255,8 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors cursor-pointer dark:text-slate-400 dark:hover:bg-[#18243C] dark:hover:text-slate-200"
-            aria-label="Fechar comparador de formatos"
+            aria-label={t('modals.recommender.close')}
+            data-i18n-aria-label="modals.recommender.close"
           >
             <X className="h-5 w-5" />
           </button>
@@ -251,12 +271,13 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
               <div>
                 <label
                   htmlFor="recommender-target-qty"
+                  data-i18n="modals.recommender.runQuantityTitle"
                   className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-slate-400"
                 >
-                  Tiragem do Trabalho (Peças Finais)
+                  {t('modals.recommender.runQuantityTitle')}
                 </label>
                 <span className="text-[11px] text-stone-400 dark:text-slate-500">
-                  Calcula o total exato de folhas brutas necessárias
+                  {t('modals.recommender.runQuantitySubtitle')}
                 </span>
               </div>
 
@@ -275,7 +296,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                     className="w-32 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm font-semibold text-stone-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-100 dark:focus:border-teal-400"
                   />
                   <span className="absolute right-3 top-2 text-xs font-normal text-stone-400 pointer-events-none dark:text-slate-500">
-                    un.
+                    {t('common.units.unitShort')}
                   </span>
                 </div>
 
@@ -287,7 +308,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                       type="button"
                       onClick={() => handleIncrementQuantity(inc)}
                       className="rounded-lg border border-stone-200/80 bg-white px-2 py-1 text-xs font-medium text-stone-600 hover:border-teal-400 hover:bg-teal-50/50 hover:text-teal-900 transition-colors cursor-pointer dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-300 dark:hover:bg-[#18243C] dark:hover:text-white"
-                      title={`Adicionar +${formatNumber(inc)} unidades`}
+                      title={t('modals.recommender.addQuantityTitle', { qty: formatNumber(inc) })}
                     >
                       +{formatNumber(inc)}
                     </button>
@@ -298,8 +319,11 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
 
             {/* Category Filter Pills */}
             <div className="border-t border-stone-200/60 pt-3 dark:border-[#1E2B45]">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-slate-400">
-                Filtrar por Categoria de Substrato
+              <span
+                data-i18n="modals.recommender.filterCategoryTitle"
+                className="mb-2 block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-slate-400"
+              >
+                {t('modals.recommender.filterCategoryTitle')}
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {CATEGORY_FILTERS.map((cat) => {
@@ -315,7 +339,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                           : 'border border-stone-200/80 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-100 hover:text-stone-900 dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-300 dark:hover:bg-[#18243C] dark:hover:text-white'
                       }`}
                     >
-                      {cat}
+                      {getCategoryLabel(cat)}
                     </button>
                   );
                 })}
@@ -327,13 +351,20 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
           {recommendations.length === 0 && (
             <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-6 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
               <AlertCircle className="mx-auto h-8 w-8 text-amber-500" />
-              <h3 className="mt-2 text-sm font-semibold text-stone-900 dark:text-slate-100">
-                Nenhum formato viável encontrado
+              <h3
+                data-i18n="modals.recommender.noViableFound"
+                className="mt-2 text-sm font-semibold text-stone-900 dark:text-slate-100"
+              >
+                {t('modals.recommender.noViableFound')}
               </h3>
               <p className="mt-1 text-xs text-stone-600 max-w-md mx-auto dark:text-slate-400">
                 {selectedCategory === 'Formatos Salvos'
-                  ? 'Você ainda não possui formatos personalizados salvos no navegador. Salve novos formatos na seção "Configuração da Folha" da barra lateral.'
-                  : `O elemento (${itemWidthMm} × ${itemHeightMm} mm) excede a área imprimível das folhas disponíveis na categoria "${selectedCategory}".`}
+                  ? t('modals.recommender.customSavedEmptyDesc')
+                  : t('modals.recommender.exceedsPrintableDesc', {
+                      width: itemWidthMm,
+                      height: itemHeightMm,
+                      category: getLocalizedCategory(selectedCategory, language),
+                    })}
               </p>
               {selectedCategory !== 'Todos' && (
                 <button
@@ -341,7 +372,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                   onClick={() => setSelectedCategory('Todos')}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 transition-colors cursor-pointer dark:bg-amber-700 dark:hover:bg-amber-600"
                 >
-                  Exibir Todas as Categorias
+                  {t('modals.recommender.showAllCategories')}
                 </button>
               )}
             </div>
@@ -353,17 +384,26 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
               {/* Badge & Title */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white shadow-xs">
-                    Melhor Escolha (#1)
+                  <span
+                    data-i18n="modals.recommender.championTitle"
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white shadow-xs"
+                  >
+                    {t('modals.recommender.championTitle')}
                   </span>
                   {currentPresetId === champion.presetId && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-300 dark:border-teal-800 dark:bg-teal-950/60 dark:text-teal-300">
-                      ✓ Formato Atual na Folha
+                    <span
+                      data-i18n="modals.recommender.currentFormat"
+                      className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-300 dark:border-teal-800 dark:bg-teal-950/60 dark:text-teal-300"
+                    >
+                      ✓ {t('modals.recommender.currentFormat')}
                     </span>
                   )}
                   {champion.isCustom && (
-                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-                      Formato Salvo
+                    <span
+                      data-i18n="modals.recommender.categorySaved"
+                      className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
+                    >
+                      {t('modals.recommender.categorySaved')}
                     </span>
                   )}
                 </div>
@@ -377,65 +417,85 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                       champion.sheetHeightMm
                     )
                   }
+                  data-i18n="modals.recommender.applyFormat"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-900 active:scale-[0.99] transition-all cursor-pointer dark:bg-teal-700 dark:hover:bg-teal-600"
                 >
                   <Check className="h-4 w-4" />
-                  <span>Aplicar Formato</span>
+                  <span>{t('modals.recommender.applyFormat')}</span>
                 </button>
               </div>
 
               {/* Champion Sheet Specs */}
               <div className="mt-3 flex flex-wrap items-baseline gap-2">
                 <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-slate-100">
-                  {champion.presetName}
+                  {getLocalizedSheetPresetName(champion.presetId, champion.presetName, language)}
                 </h3>
                 <span className="text-sm font-semibold text-teal-950/80 dark:text-teal-300">
                   {champion.sheetWidthMm} × {champion.sheetHeightMm} mm
                 </span>
                 <span className="text-xs text-stone-500 dark:text-slate-400">
-                  ({champion.category})
+                  ({getLocalizedCategory(champion.category, language)})
                 </span>
               </div>
 
               {/* 4 Primary KPI Columns */}
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-teal-200/60 bg-white/90 p-3 shadow-2xs dark:border-[#1E2B45] dark:bg-[#0D1527]">
-                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400">
-                    Folhas Necessárias
+                  <span
+                    data-i18n="modals.recommender.sheetsNeeded"
+                    className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400"
+                  >
+                    {t('modals.recommender.sheetsNeeded')}
                   </span>
                   <div className="mt-0.5 flex items-baseline gap-1">
                     <span className="text-2xl font-bold font-mono text-stone-900 dark:text-slate-100">
                       {formatNumber(champion.sheetsNeeded)}
                     </span>
-                    <span className="text-xs text-stone-500 dark:text-slate-400">fls</span>
+                    <span className="text-xs text-stone-500 dark:text-slate-400">
+                      {t('tables.recommender.sheetsShort')}
+                    </span>
                   </div>
                   <span className="mt-1 block text-[11px] text-stone-500 dark:text-slate-400">
-                    Produz {formatNumber(champion.totalProduced)} un. (
-                    {champion.totalProduced - targetQuantity >= 0
-                      ? `+${formatNumber(champion.totalProduced - targetQuantity)} sobra`
-                      : ''}
-                    )
+                    {language === 'pt-BR'
+                      ? `Produz ${formatNumber(champion.totalProduced)} un. (${
+                          champion.totalProduced - targetQuantity >= 0
+                            ? t('modals.recommender.excessWaste', { count: formatNumber(champion.totalProduced - targetQuantity) })
+                            : ''
+                        })`
+                      : `Yields ${formatNumber(champion.totalProduced)} un. (${
+                          champion.totalProduced - targetQuantity >= 0
+                            ? t('modals.recommender.excessWaste', { count: formatNumber(champion.totalProduced - targetQuantity) })
+                            : ''
+                        })`}
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-teal-200/60 bg-white/90 p-3 shadow-2xs dark:border-[#1E2B45] dark:bg-[#0D1527]">
-                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400">
-                    Peças por Folha
+                  <span
+                    data-i18n="modals.recommender.piecesPerSheet"
+                    className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400"
+                  >
+                    {t('modals.recommender.piecesPerSheet')}
                   </span>
                   <div className="mt-0.5 flex items-baseline gap-1">
                     <span className="text-2xl font-bold font-mono text-teal-900 dark:text-teal-300">
                       {champion.itemsPerSheet}
                     </span>
-                    <span className="text-xs text-stone-500 dark:text-slate-400">peças</span>
+                    <span className="text-xs text-stone-500 dark:text-slate-400">
+                      {t('common.units.pieces')}
+                    </span>
                   </div>
                   <span className="mt-1 block text-[11px] text-stone-500 dark:text-slate-400">
-                    Arranjo: {getStrategyLabel(champion.bestStrategy)}
+                    {t('modals.recommender.layoutPrefix')} {getStrategyLabel(champion.bestStrategy)}
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-teal-200/60 bg-white/90 p-3 shadow-2xs dark:border-[#1E2B45] dark:bg-[#0D1527]">
-                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400">
-                    Aproveitamento Útil
+                  <span
+                    data-i18n="modals.recommender.usableYield"
+                    className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400"
+                  >
+                    {t('modals.recommender.usableYield')}
                   </span>
                   <div className="mt-0.5 flex items-baseline gap-1">
                     <span className="text-2xl font-bold font-mono text-emerald-800 dark:text-emerald-300">
@@ -443,13 +503,16 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                     </span>
                   </div>
                   <span className="mt-1 block text-[11px] text-stone-500 dark:text-slate-400">
-                    Apara residual: {formatNumber(champion.wastePercent, 1)}%
+                    {t('modals.recommender.residualScrapPrefix')} {formatNumber(champion.wastePercent, 1)}%
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-teal-200/60 bg-white/90 p-3 shadow-2xs dark:border-[#1E2B45] dark:bg-[#0D1527]">
-                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400">
-                    {hasCostData ? 'Custo de Produção' : 'Economia'}
+                  <span
+                    data-i18n={hasCostData ? 'modals.recommender.productionCost' : 'modals.recommender.economy'}
+                    className="block text-[11px] font-medium uppercase tracking-wider text-stone-400 dark:text-slate-400"
+                  >
+                    {hasCostData ? t('modals.recommender.productionCost') : t('modals.recommender.economy')}
                   </span>
                   <div className="mt-0.5 flex items-baseline gap-1">
                     {hasCostData && champion.pricing ? (
@@ -460,15 +523,18 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                         )}
                       </span>
                     ) : (
-                      <span className="text-xl font-bold font-mono text-stone-700 dark:text-slate-200">
-                        Ótimo
+                      <span
+                        data-i18n="modals.recommender.optimal"
+                        className="text-xl font-bold font-mono text-stone-700 dark:text-slate-200"
+                      >
+                        {t('modals.recommender.optimal')}
                       </span>
                     )}
                   </div>
                   <span className="mt-1 block text-[11px] text-stone-500 dark:text-slate-400">
                     {hasCostData && champion.pricing
-                      ? `${formatCurrency(champion.pricing.unitCost, pricingConfig.currency)} / un.`
-                      : 'Menor consumo de folha'}
+                      ? `${formatCurrency(champion.pricing.unitCost, pricingConfig.currency)} ${t('modals.recommender.unitSuffix')}`
+                      : t('modals.recommender.lowestConsumption')}
                   </span>
                 </div>
               </div>
@@ -479,11 +545,14 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
           {recommendations.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-slate-400">
-                  Ranking de Formatos Analisados ({recommendations.length})
+                <h3
+                  data-i18n="tables.recommender.rankingTitle"
+                  className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-slate-400"
+                >
+                  {t('tables.recommender.rankingTitle')} ({recommendations.length})
                 </h3>
                 <span className="text-[11px] text-stone-400 dark:text-slate-500">
-                  Ordenado por {hasCostData ? 'custo total de produção' : 'menor número de folhas'}
+                  {hasCostData ? t('modals.recommender.economyNotice') : t('modals.recommender.sheetsFallbackNotice')}
                 </span>
               </div>
 
@@ -492,19 +561,37 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                   <thead>
                     <tr className="border-b border-stone-200 bg-stone-50/80 font-semibold text-stone-600 dark:border-[#1E2B45] dark:bg-[#090E1A] dark:text-slate-400">
                       <th className="py-2.5 px-3">#</th>
-                      <th className="py-2.5 px-3">Formato & Dimensões</th>
-                      <th className="py-2.5 px-3">Categoria</th>
-                      <th className="py-2.5 px-3 text-right">Peças / Folha</th>
-                      <th className="py-2.5 px-3 text-right">Folhas Necessárias</th>
-                      <th className="py-2.5 px-3 text-right">Aproveitamento</th>
-                      <th className="py-2.5 px-3 text-right">Apara</th>
+                      <th data-i18n="tables.recommender.formatDimensions" className="py-2.5 px-3">
+                        {t('tables.recommender.formatDimensions')}
+                      </th>
+                      <th data-i18n="tables.recommender.category" className="py-2.5 px-3">
+                        {t('tables.recommender.category')}
+                      </th>
+                      <th data-i18n="tables.recommender.piecesPerSheet" className="py-2.5 px-3 text-right">
+                        {t('tables.recommender.piecesPerSheet')}
+                      </th>
+                      <th data-i18n="modals.recommender.sheetsNeeded" className="py-2.5 px-3 text-right">
+                        {t('modals.recommender.sheetsNeeded')}
+                      </th>
+                      <th data-i18n="tables.recommender.yield" className="py-2.5 px-3 text-right">
+                        {t('tables.recommender.yield')}
+                      </th>
+                      <th data-i18n="tables.recommender.scrap" className="py-2.5 px-3 text-right">
+                        {t('tables.recommender.scrap')}
+                      </th>
                       {hasCostData && (
                         <>
-                          <th className="py-2.5 px-3 text-right">Custo Total</th>
-                          <th className="py-2.5 px-3 text-right">Custo Unitário</th>
+                          <th data-i18n="tables.recommender.totalCost" className="py-2.5 px-3 text-right">
+                            {t('tables.recommender.totalCost')}
+                          </th>
+                          <th data-i18n="tables.recommender.unitCost" className="py-2.5 px-3 text-right">
+                            {t('tables.recommender.unitCost')}
+                          </th>
                         </>
                       )}
-                      <th className="py-2.5 px-3 text-center">Ação</th>
+                      <th data-i18n="tables.recommender.action" className="py-2.5 px-3 text-center">
+                        {t('tables.recommender.action')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-[#1E2B45]">
@@ -531,11 +618,14 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                           <td className="py-3 px-3 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold text-stone-900 dark:text-slate-100">
-                                {rec.presetName}
+                                {getLocalizedSheetPresetName(rec.presetId, rec.presetName, language)}
                               </span>
                               {isCurrent && (
-                                <span className="rounded-full bg-stone-200/80 px-2 py-0.5 text-[10px] font-semibold text-stone-700 dark:border dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300">
-                                  Atual
+                                <span
+                                  data-i18n="tables.recommender.current"
+                                  className="rounded-full bg-stone-200/80 px-2 py-0.5 text-[10px] font-semibold text-stone-700 dark:border dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300"
+                                >
+                                  {t('tables.recommender.current')}
                                 </span>
                               )}
                             </div>
@@ -546,7 +636,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
 
                           {/* Category */}
                           <td className="py-3 px-3 whitespace-nowrap text-stone-500 text-[11px] dark:text-slate-400">
-                            {rec.category}
+                            {getLocalizedCategory(rec.category, language)}
                           </td>
 
                           {/* Items / Sheet & Strategy */}
@@ -564,7 +654,9 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                             <span className="font-semibold text-stone-900 font-mono text-sm dark:text-slate-100">
                               {formatNumber(rec.sheetsNeeded)}
                             </span>
-                            <span className="text-[11px] text-stone-400 dark:text-slate-500"> fls</span>
+                            <span className="text-[11px] text-stone-400 dark:text-slate-500">
+                              {' '}{t('tables.recommender.sheetsShort')}
+                            </span>
                           </td>
 
                           {/* Utilization */}
@@ -610,6 +702,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                                   rec.sheetHeightMm
                                 )
                               }
+                              data-i18n={isCurrent ? 'tables.recommender.current' : 'tables.recommender.apply'}
                               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
                                 isCurrent
                                   ? 'bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-700 dark:bg-[#18243C] dark:text-slate-400'
@@ -618,7 +711,7 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
                                     : 'border border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-100 hover:text-stone-900 dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-300 dark:hover:bg-[#18243C] dark:hover:text-white'
                               }`}
                             >
-                              {isCurrent ? 'Atual' : 'Aplicar'}
+                              {isCurrent ? t('tables.recommender.current') : t('tables.recommender.apply')}
                             </button>
                           </td>
                         </tr>
@@ -633,16 +726,21 @@ export const SubstrateRecommenderModal: React.FC<SubstrateRecommenderModalProps>
 
         {/* Footer */}
         <div className="flex shrink-0 items-center justify-between border-t border-stone-100 bg-stone-50/80 px-5 py-3.5 sm:px-6 dark:border-[#1E2B45] dark:bg-[#0D1527]">
-          <p className="text-[11px] text-stone-500 hidden sm:block dark:text-slate-400">
-            💡 Os cálculos de custo utilizam os valores configurados na Precificação da gráfica.
+          <p
+            data-i18n="modals.recommender.pricingCostInfo"
+            className="text-[11px] text-stone-500 hidden sm:flex items-center gap-1.5 dark:text-slate-400"
+          >
+            <Info className="h-4 w-4 text-blue-500 shrink-0" />
+            <span>{t('modals.recommender.pricingCostInfo')}</span>
           </p>
 
           <button
             type="button"
             onClick={onClose}
+            data-i18n="modals.recommender.close"
             className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-medium text-stone-700 hover:border-stone-300 hover:bg-stone-100 transition-colors ml-auto cursor-pointer dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-slate-300 dark:hover:bg-[#18243C] dark:hover:text-white"
           >
-            Fechar
+            {t('modals.recommender.close')}
           </button>
         </div>
       </div>

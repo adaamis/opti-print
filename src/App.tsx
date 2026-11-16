@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Layers, Moon, Sun, Zap } from 'lucide-react';
 import { GuillotineModal } from './components/GuillotineModal';
 import { ItemListPanel } from './components/ItemListPanel';
+import { LanguageSwitch } from './components/LanguageSwitch';
 import { MetricsBar } from './components/MetricsBar';
 import { PricingModal } from './components/PricingModal';
 import { QuickModePanel } from './components/QuickModePanel';
@@ -12,6 +13,7 @@ import { DEFAULT_MULTI_ITEMS, DEFAULT_SHEET_CONFIG, ITEM_COLORS } from './consta
 import { analyzeGuillotineCuts } from './engine/guillotine';
 import { computeQuickYield, packItems } from './engine/packer';
 import { calculatePricing } from './engine/pricing';
+import { getLocalizedPresetItemName, useTranslation } from './i18n';
 import type {
   AppMode,
   ItemSpec,
@@ -36,6 +38,7 @@ import {
 } from './utils/theme';
 
 export function App(): React.ReactElement {
+  const { t, language } = useTranslation();
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
   const [mode, setMode] = useState<AppMode>('quick');
   const [unit, setUnit] = useState<Unit>('mm');
@@ -45,6 +48,17 @@ export function App(): React.ReactElement {
     applyTheme(theme);
     setStoredTheme(theme);
   }, [theme]);
+
+  // Synchronize default preset item names when user toggles language
+  useEffect(() => {
+    setQuickName((prev) => getLocalizedPresetItemName(prev, language));
+    setMultiItems((items) =>
+      items.map((item) => ({
+        ...item,
+        name: getLocalizedPresetItemName(item.name, language),
+      }))
+    );
+  }, [language]);
 
   const handleToggleTheme = () => {
     setTheme((prev) => toggleTheme(prev));
@@ -185,21 +199,28 @@ export function App(): React.ReactElement {
       <header className="no-print sticky top-0 z-20 border-b border-stone-200/70 bg-white/80 backdrop-blur-md dark:border-[#1E2B45] dark:bg-[#0B111E]/95">
         <div className="mx-auto flex max-w-[1540px] flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-8">
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-stone-900 sm:text-lg dark:text-white">
-              OptiPrint
+            <h1
+              data-i18n="nav.title"
+              className="text-base font-semibold tracking-tight text-stone-900 sm:text-lg dark:text-white"
+            >
+              {t('nav.title')}
             </h1>
-            <p className="text-xs font-light text-stone-400 dark:text-slate-400">
-              Estúdio de Imposição & Aproveitamento
+            <p
+              data-i18n="nav.subtitle"
+              className="text-xs font-light text-stone-400 dark:text-slate-400"
+            >
+              {t('nav.subtitle')}
             </p>
           </div>
 
-          {/* Right cluster: Mode Switcher & Theme Toggle */}
+          {/* Right cluster: Mode Switcher, Language Switcher & Theme Toggle */}
           <div className="flex items-center gap-2.5">
             {/* Mode Switcher */}
             <div className="inline-flex rounded-full border border-stone-200/50 bg-stone-100/80 p-1 shadow-xs dark:border-[#1E2B45] dark:bg-[#111A2E]/80">
               <button
                 type="button"
                 onClick={() => setMode('quick')}
+                data-i18n="nav.quickMode"
                 className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs transition-all sm:text-sm ${
                   mode === 'quick'
                     ? 'bg-white text-stone-900 shadow-xs font-medium dark:bg-[#18243C] dark:text-white'
@@ -209,11 +230,12 @@ export function App(): React.ReactElement {
                 <Zap
                   className={`h-4 w-4 ${mode === 'quick' ? 'text-amber-500' : 'text-stone-400 dark:text-slate-500'}`}
                 />
-                Modo Rápido (1 Elemento)
+                {t('nav.quickMode')}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('multi')}
+                data-i18n="nav.multiMode"
                 className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs transition-all sm:text-sm ${
                   mode === 'multi'
                     ? 'bg-white text-stone-900 shadow-xs font-medium dark:bg-[#18243C] dark:text-white'
@@ -223,16 +245,21 @@ export function App(): React.ReactElement {
                 <Layers
                   className={`h-4 w-4 ${mode === 'multi' ? 'text-teal-700 dark:text-teal-400' : 'text-stone-400 dark:text-slate-500'}`}
                 />
-                Vários Elementos
+                {t('nav.multiMode')}
               </button>
             </div>
+
+            {/* Language Switcher */}
+            <LanguageSwitch />
 
             {/* Tinted Dark Mode Toggle */}
             <button
               type="button"
               onClick={handleToggleTheme}
-              aria-label={theme === 'dark' ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
-              title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+              aria-label={theme === 'dark' ? t('nav.toggleThemeLight') : t('nav.toggleThemeDark')}
+              title={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
+              data-i18n-aria-label={theme === 'dark' ? 'nav.toggleThemeLight' : 'nav.toggleThemeDark'}
+              data-i18n-title={theme === 'dark' ? 'nav.lightMode' : 'nav.darkMode'}
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:border-[#1E2B45] dark:bg-[#111A2E] dark:text-amber-400 dark:hover:bg-[#18243C] dark:hover:text-amber-300 transition-colors cursor-pointer"
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -300,13 +327,13 @@ export function App(): React.ReactElement {
             <div className="no-print flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 text-xs text-amber-900 shadow-xs dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="font-semibold">
-                  Alguns elementos não puderam ser acomodados na folha atual:
+                <p data-i18n="alerts.unplacedBannerTitle" className="font-semibold">
+                  {t('alerts.unplacedBannerTitle')}
                 </p>
                 <ul className="mt-1 list-inside list-disc space-y-0.5 text-amber-800 dark:text-amber-300">
                   {multiResult.unplacedItems.map((u) => (
                     <li key={`${u.itemId}-${u.reason}`}>
-                      <strong>{u.name}</strong> ({u.quantity} un. — {u.widthMm}×{u.heightMm} mm):{' '}
+                      <strong>{u.name}</strong> ({u.quantity} {t('common.units.unitShortUn')} — {u.widthMm}×{u.heightMm} mm):{' '}
                       {u.reason}
                     </li>
                   ))}

@@ -11,6 +11,11 @@ import {
   Trash2,
 } from 'lucide-react';
 import { SHEET_PRESET_GROUPS } from '../constants/sheets';
+import {
+  getLocalizedCategory,
+  getLocalizedSheetPresetName,
+  useTranslation,
+} from '../i18n';
 import type { SheetConfig, Unit } from '../types/optimizer';
 import {
   deleteCustomPreset,
@@ -33,6 +38,7 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
   onUnitChange,
   onChange,
 }) => {
+  const { t, language } = useTranslation();
   const [customPresets, setCustomPresets] = useState(() => loadSavedCustomPresets());
   const [isSavingCustom, setIsSavingCustom] = useState(false);
   const [customNameInput, setCustomNameInput] = useState('');
@@ -116,7 +122,7 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
     if (e) e.preventDefault();
 
     if (sheet.widthMm <= 0 || sheet.heightMm <= 0) {
-      setSaveError('Informe dimensões válidas maiores que zero antes de salvar.');
+      setSaveError(t('forms.sheetConfig.invalidDimensions'));
       return;
     }
 
@@ -161,15 +167,19 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-stone-700 dark:text-slate-300" />
-          <h2 className="text-sm font-semibold tracking-tight text-stone-900 dark:text-slate-100">
-            Configuração da Folha
+          <h2
+            data-i18n="forms.sheetConfig.title"
+            className="text-sm font-semibold tracking-tight text-stone-900 dark:text-slate-100"
+          >
+            {t('forms.sheetConfig.title')}
           </h2>
         </div>
 
         {/* Unit switcher */}
         <div
           className="inline-flex rounded-full border border-stone-200/60 bg-stone-100/70 p-0.5 text-xs font-medium dark:border-[#1E2B45] dark:bg-[#0D1527]"
-          title="Alternar unidade de medida (milímetros ou centímetros)"
+          title={t('forms.sheetConfig.unitTooltip')}
+          data-i18n-title="forms.sheetConfig.unitTooltip"
         >
           <button
             type="button"
@@ -200,9 +210,10 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
       <div className="mb-4 space-y-2">
         <label
           htmlFor="sheet-preset-select"
+          data-i18n="forms.sheetConfig.presetLabel"
           className="block text-xs font-medium text-stone-600 dark:text-slate-300"
         >
-          Tamanho da Folha
+          {t('forms.sheetConfig.presetLabel')}
         </label>
 
         <select
@@ -211,12 +222,12 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
           onChange={(e) => handleSelectPreset(e.target.value)}
           className="w-full rounded-xl border border-stone-200/70 bg-stone-50/40 px-3 py-2 text-xs font-medium text-stone-900 shadow-xs focus:border-stone-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-100 dark:focus:border-teal-400 dark:focus:bg-[#0D1527]"
         >
-          <optgroup label="✏️ Personalizado (Digitar Medidas)">
-            <option value="CUSTOM">Personalizado (Digitar Medidas)</option>
+          <optgroup label={t('forms.sheetConfig.customCategory')}>
+            <option value="CUSTOM">{t('forms.sheetConfig.customOption')}</option>
           </optgroup>
 
           {customPresets.length > 0 && (
-            <optgroup label="⭐ Meus Formatos Salvos">
+            <optgroup label={t('forms.sheetConfig.mySavedFormats')}>
               {customPresets.map((preset) => (
                 <option key={preset.id} value={preset.id}>
                   {preset.name} ({preset.description})
@@ -226,10 +237,13 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
           )}
 
           {SHEET_PRESET_GROUPS.map((group) => (
-            <optgroup key={group.category} label={group.category}>
+            <optgroup
+              key={group.category}
+              label={getLocalizedCategory(group.category, language)}
+            >
               {group.items.map((preset) => (
                 <option key={preset.id} value={preset.id}>
-                  {preset.name} — {preset.description}
+                  {getLocalizedSheetPresetName(preset.id, preset.name, language)} — {preset.description}
                 </option>
               ))}
             </optgroup>
@@ -249,10 +263,12 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
               type="button"
               onClick={() => handleDeleteSavedPreset(selectedCustomPreset.id)}
               className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300 transition-colors"
-              title="Excluir este formato personalizado da lista"
+              title={t('forms.sheetConfig.deletePresetTitle')}
+              data-i18n-title="forms.sheetConfig.deletePresetTitle"
+              data-i18n="forms.sheetConfig.deletePreset"
             >
               <Trash2 className="h-3 w-3" />
-              Excluir
+              {t('forms.sheetConfig.deletePreset')}
             </button>
           </div>
         )}
@@ -261,8 +277,11 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
       {/* Sheet dimensions & orientation */}
       <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">
-            Largura ({unit})
+          <label
+            data-i18n="forms.sheetConfig.width"
+            className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400"
+          >
+            {t('forms.sheetConfig.width', { unit })}
           </label>
           <input
             type="number"
@@ -277,17 +296,24 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
         <button
           type="button"
           onClick={handleToggleOrientation}
-          title={`Inverter orientação (Atual: ${
-            sheet.orientation === 'portrait' ? 'Retrato' : 'Paisagem'
-          })`}
+          title={t('forms.sheetConfig.flipOrientationTitle', {
+            orientation:
+              sheet.orientation === 'portrait'
+                ? t('forms.sheetConfig.portrait')
+                : t('forms.sheetConfig.landscape'),
+          })}
+          data-i18n-title="forms.sheetConfig.flipOrientationTitle"
           className="mb-0.5 flex h-9.5 items-center justify-center rounded-xl border border-stone-200/70 bg-stone-50/50 px-2.5 text-stone-600 transition-colors hover:border-stone-300 hover:bg-stone-100 hover:text-stone-900 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-[#18243C] dark:hover:text-white"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </button>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">
-            Altura ({unit})
+          <label
+            data-i18n="forms.sheetConfig.height"
+            className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400"
+          >
+            {t('forms.sheetConfig.height', { unit })}
           </label>
           <input
             type="number"
@@ -302,15 +328,28 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
 
       {/* Orientation pill + usable info */}
       <div className="mb-3 flex items-center justify-between rounded-xl border border-stone-200/50 bg-stone-50/50 px-3 py-2 text-xs text-stone-600 dark:border-[#1E2B45] dark:bg-[#0D1527] dark:text-slate-300">
-        <span className="inline-flex items-center gap-1.5 font-medium">
+        <span
+          data-i18n={
+            sheet.orientation === 'portrait'
+              ? 'forms.sheetConfig.portraitLong'
+              : 'forms.sheetConfig.landscapeLong'
+          }
+          className="inline-flex items-center gap-1.5 font-medium"
+        >
           <Maximize2 className="h-3.5 w-3.5 text-stone-400 dark:text-slate-400" />
-          {sheet.orientation === 'portrait' ? 'Retrato (Vertical)' : 'Paisagem (Horizontal)'}
+          {sheet.orientation === 'portrait'
+            ? t('forms.sheetConfig.portraitLong')
+            : t('forms.sheetConfig.landscapeLong')}
         </span>
         <span
           className="font-mono text-[11px] text-stone-500 dark:text-slate-400"
-          title="Área imprimível descontando as margens"
+          title={t('forms.sheetConfig.usableAreaTitle')}
+          data-i18n-title="forms.sheetConfig.usableAreaTitle"
         >
-          Útil: {formatDim(usableW, unit, false)} × {formatDim(usableH, unit)}
+          {t('forms.sheetConfig.usableArea', {
+            width: formatDim(usableW, unit, false),
+            height: formatDim(usableH, unit),
+          })}
         </span>
       </div>
 
@@ -321,10 +360,11 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
             type="button"
             onClick={handleStartSaveCustom}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-3.5 py-2.5 text-xs font-medium text-stone-50 shadow-xs transition-colors hover:bg-stone-800 cursor-pointer dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white"
-            title="Salvar as medidas atuais como um formato reutilizável no menu"
+            title={t('forms.sheetConfig.saveFormatTitle')}
+            data-i18n-title="forms.sheetConfig.saveFormatTitle"
           >
             <BookmarkPlus className="w-3.5 h-3.5" />
-            <span>Salvar formato atual</span>
+            <span data-i18n="forms.sheetConfig.saveFormat">{t('forms.sheetConfig.saveFormat')}</span>
           </button>
         </div>
       ) : (
@@ -333,8 +373,11 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
           className="mb-4 rounded-xl border border-stone-200/80 bg-stone-50/70 p-3 space-y-2.5 text-xs dark:border-[#1E2B45] dark:bg-[#0D1527]"
         >
           <div className="flex items-center justify-between">
-            <span className="font-medium text-stone-900 dark:text-slate-100">
-              Salvar Formato Personalizado
+            <span
+              data-i18n="forms.sheetConfig.saveCustomTitle"
+              className="font-medium text-stone-900 dark:text-slate-100"
+            >
+              {t('forms.sheetConfig.saveCustomTitle')}
             </span>
             <span className="font-mono text-[11px] text-stone-500 dark:text-slate-400">
               {formatDim(sheet.widthMm, unit, false)} × {formatDim(sheet.heightMm, unit)}
@@ -343,7 +386,8 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
 
           <input
             type="text"
-            placeholder="Nome do formato (ex: Capa Dura 145x203mm)"
+            placeholder={t('forms.sheetConfig.presetNamePlaceholder')}
+            data-i18n-placeholder="forms.sheetConfig.presetNamePlaceholder"
             value={customNameInput}
             onChange={(e) => {
               setCustomNameInput(e.target.value);
@@ -368,15 +412,17 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
                 setIsSavingCustom(false);
                 setSaveError(null);
               }}
+              data-i18n="forms.sheetConfig.cancel"
               className="rounded-lg px-2.5 py-1 text-stone-500 hover:bg-stone-200/60 dark:text-slate-400 dark:hover:bg-[#18243C] dark:hover:text-slate-200 transition-colors"
             >
-              Cancelar
+              {t('forms.sheetConfig.cancel')}
             </button>
             <button
               type="submit"
+              data-i18n="forms.sheetConfig.saveToMenu"
               className="rounded-lg bg-stone-900 px-3 py-1 font-medium text-stone-50 shadow-xs hover:bg-stone-800 dark:bg-teal-700 dark:hover:bg-teal-600 dark:text-white transition-colors"
             >
-              Salvar no Menu
+              {t('forms.sheetConfig.saveToMenu')}
             </button>
           </div>
         </form>
@@ -384,14 +430,18 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
 
       {/* Paper Grain Direction (Sentido da Fibra do Papel) */}
       <div className="mb-4 space-y-1.5">
-        <label className="flex items-center gap-1.5 text-xs font-medium text-stone-600 dark:text-slate-300">
+        <label
+          data-i18n="forms.sheetConfig.grainDirection"
+          className="flex items-center gap-1.5 text-xs font-medium text-stone-600 dark:text-slate-300"
+        >
           <Compass className="h-3.5 w-3.5 text-stone-500 dark:text-slate-400" />
-          Sentido da Fibra do Papel
+          {t('forms.sheetConfig.grainDirection')}
         </label>
 
         <div
           role="group"
-          aria-label="Sentido da Fibra do Papel"
+          aria-label={t('forms.sheetConfig.grainDirection')}
+          data-i18n-aria-label="forms.sheetConfig.grainDirection"
           className="grid grid-cols-2 gap-1 rounded-xl border border-stone-200/70 bg-stone-100/70 p-1 text-xs dark:border-[#1E2B45] dark:bg-[#0D1527]"
         >
           <button
@@ -405,9 +455,12 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
                 : 'text-stone-500 hover:text-stone-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <span>Longa ↕</span>
-            <span className="text-[10px] font-normal text-stone-400 dark:text-slate-500">
-              (Paralela ao lado maior)
+            <span data-i18n="forms.sheetConfig.grainLong">{t('forms.sheetConfig.grainLong')}</span>
+            <span
+              data-i18n="forms.sheetConfig.grainLongDesc"
+              className="text-[10px] font-normal text-stone-400 dark:text-slate-500"
+            >
+              {t('forms.sheetConfig.grainLongDesc')}
             </span>
           </button>
           <button
@@ -421,15 +474,21 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
                 : 'text-stone-500 hover:text-stone-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <span>Curta ↔</span>
-            <span className="text-[10px] font-normal text-stone-400 dark:text-slate-500">
-              (Paralela ao lado menor)
+            <span data-i18n="forms.sheetConfig.grainShort">{t('forms.sheetConfig.grainShort')}</span>
+            <span
+              data-i18n="forms.sheetConfig.grainShortDesc"
+              className="text-[10px] font-normal text-stone-400 dark:text-slate-500"
+            >
+              {t('forms.sheetConfig.grainShortDesc')}
             </span>
           </button>
         </div>
 
-        <p className="text-[11px] font-light text-stone-400 dark:text-slate-500">
-          A dobra ou vinco deve acompanhar o sentido da fibra para evitar que o papel rache.
+        <p
+          data-i18n="forms.sheetConfig.grainHelper"
+          className="text-[11px] font-light text-stone-400 dark:text-slate-500"
+        >
+          {t('forms.sheetConfig.grainHelper')}
         </p>
       </div>
 
@@ -437,11 +496,13 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
       <div className="grid grid-cols-2 gap-2.5">
         <div>
           <label
+            data-i18n="forms.sheetConfig.marginLabel"
             className="mb-1 flex items-center gap-1 text-xs font-medium text-stone-500 dark:text-slate-400"
-            title="Margem de segurança/pinça nas 4 bordas da folha onde não há impressão"
+            title={t('forms.sheetConfig.marginTooltip')}
+            data-i18n-title="forms.sheetConfig.marginTooltip"
           >
             <Ruler className="h-3 w-3 text-stone-400 dark:text-slate-500" />
-            Margem / Pinça ({unit})
+            {t('forms.sheetConfig.marginLabel', { unit })}
             <Info className="h-3 w-3 text-stone-400 dark:text-slate-500" />
           </label>
           <input
@@ -456,10 +517,12 @@ export const SheetConfigPanel: React.FC<SheetConfigPanelProps> = ({
 
         <div>
           <label
+            data-i18n="forms.sheetConfig.spacingLabel"
             className="mb-1 flex items-center gap-1 text-xs font-medium text-stone-500 dark:text-slate-400"
-            title="Espaço entre peças vizinhas para corte com guilhotina ou sangria"
+            title={t('forms.sheetConfig.spacingTooltip')}
+            data-i18n-title="forms.sheetConfig.spacingTooltip"
           >
-            Espaço / Corte ({unit})
+            {t('forms.sheetConfig.spacingLabel', { unit })}
             <Info className="h-3 w-3 text-stone-400 dark:text-slate-500" />
           </label>
           <input
